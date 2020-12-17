@@ -50,11 +50,24 @@ func addLink(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Fprintf(w, "<h1>Error: %s</h1>\n", err)
 	}
 
-	fmt.Fprintf(w, "<h1>Submitted message!</h1>")
-	fmt.Println(r.PostFormValue("linkID"))
-	fmt.Println(r.PostFormValue("link"))
+	linkID := strings.ToLower(r.PostFormValue("linkID"))
+	link := r.PostFormValue("link")
 
-	fmt.Println(isValidURL(r.PostFormValue("link")))
+	if isValidURL(link) {
+
+		err := insertDatabaseData(linkID, link)
+		if err != nil {
+			fmt.Fprintf(w, "<h1>Error: %s</h1>\n", err)
+		} else {
+			fmt.Fprintf(w, "<h1>Successfully added: %s</h1>\n", linkID)
+		}
+
+	} else {
+
+		fmt.Fprintf(w, "<h1>Error: Specified link is not a valid link</h1>\n")
+
+	}
+
 }
 
 //matchLinkID checks the ID, matches it and redirects if the key exists
@@ -102,6 +115,21 @@ func getDatabaseData(linkID string) string {
 	fmt.Println(link)
 
 	return link
+}
+
+func insertDatabaseData(linkID string, link string) error {
+
+	connStr := "user=" + os.Getenv("DB_USER") + " dbname=" + os.Getenv("DB_NAME") + " password=" + os.Getenv("DB_PASSWORD") + " host=" + os.Getenv("DB_HOST") + " sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec("INSERT INTO links (linkID, link) VALUES ($1, $2)", linkID, link)
+
+	return err
+
 }
 
 func main() {
